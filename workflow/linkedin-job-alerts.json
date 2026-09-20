@@ -1,0 +1,364 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyHour"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "from:jobalerts-noreply@linkedin.com"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "570bb5af-4070-446d-aed5-b377e3629d04",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "TZe7Yjifpwpz05LY",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split LinkedIn job-alert emails into one item per job.\nconst out = [];\n// One timestamp per execution, not per item: two copies of the same job in the\n// same email then produce byte-identical items, so any dedupe compare works.\nconst runAt = new Date().toISOString();\n\nfor (const item of $input.all()) {\n  const text = (item.json.text || '').replace(/\\r/g, '');\n  const alertMatch = text.match(/Your job alert for (.+?) in ([^\\n]+)/);\n  const alert = alertMatch ? alertMatch[1].trim() : '';\n  const blocks = text.split(/\\n-{10,}\\n/);        // jobs are separated by dashed lines\n  let found = 0;\n\n  for (const block of blocks) {\n    const idMatch = block.match(/linkedin\\.com\\/(?:comm\\/)?jobs\\/view\\/(\\d+)/);\n    if (!idMatch) continue;                         // skip header, \"See all jobs\", footer\n    const lines = block\n      .split('\\n')\n      .map(l => l.trim())\n      .filter(l => l\n        && !l.startsWith('View job:')\n        && l !== 'This company is actively hiring'\n        && !l.startsWith('Your job alert for')\n        && !/new jobs? match/i.test(l));\n    const [title = '', company = '', location = ''] = lines;\n    found++;\n    out.push({\n      json: {\n        jobId: idMatch[1],\n        title,\n        company,\n        location,\n        activelyHiring: block.includes('This company is actively hiring'),\n        url: `https://www.linkedin.com/jobs/view/${idMatch[1]}/`,   // clean link, tracking removed\n        alert,\n        emailDate: item.json.date || '',\n        parseOk: Boolean(title && company && location),              // flags a block that didn't parse\n        addedAt: runAt,\n      },\n    });\n  }\n\n  // Silent-failure guard. An alert email that yields no jobs means LinkedIn\n  // changed the email format. Without this the run succeeds and writes nothing,\n  // and you would only notice weeks later from an empty sheet.\n  if (found === 0) {\n    const msgId = item.json.id || item.json.messageId || runAt;\n    out.push({\n      json: {\n        jobId: `PARSE-FAIL-${msgId}`,\n        title: 'PARSE FAILURE - alert email produced 0 jobs',\n        company: '',\n        location: '',\n        activelyHiring: false,\n        url: '',\n        alert,\n        emailDate: item.json.date || '',\n        parseOk: false,\n        addedAt: runAt,\n        status: 'PARSE_FAILURE',\n      },\n    });\n  }\n}\n\n// Dedupe WITHIN this batch. The Remove Duplicates node downstream is set to\n// \"Remove Items Processed in Previous Executions\", which by design only compares\n// against earlier runs -- n8n's docs are explicit that items repeated within the\n// current input are not removed there. A single digest can list the same job\n// twice, and the two copies are not byte-identical (the \"actively hiring\" line\n// appears on one and not the other), so comparing all fields would miss them.\n// Comparing the job id is the only thing that works.\nconst seen = new Set();\nconst deduped = out.filter((o) => {\n  if (seen.has(o.json.jobId)) return false;\n  seen.add(o.json.jobId);\n  return true;\n});\n\nreturn deduped;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "36f0757b-633c-494e-9679-97f28f912185",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "removeItemsSeenInPreviousExecutions",
+        "dedupeValue": "={{ $json.jobId }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "62956778-97cb-4153-896c-8a3febfe8ea8",
+      "name": "Remove Duplicates"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Job Alerts",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "jobId"
+          ],
+          "schema": [
+            {
+              "id": "jobId",
+              "displayName": "jobId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "location",
+              "displayName": "location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "activelyHiring",
+              "displayName": "activelyHiring",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "alert",
+              "displayName": "alert",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "emailDate",
+              "displayName": "emailDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "parseOk",
+              "displayName": "parseOk",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "addedAt",
+              "displayName": "addedAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        720,
+        0
+      ],
+      "id": "8b05ac72-9d4c-4d95-a4c9-b0c5983739f9",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GQweusjbmz1Aiz3h",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Batch every job from this run into ONE Gemini call.\n// 30-ish jobs per run at ~20 alert emails a day: one call keeps us far inside\n// the free tier and gives the model the whole set to compare against.\nconst items = $input.all();\n\nconst instructions = `You are triaging LinkedIn job alerts for a working student in Germany.\n\nYou see ONLY the job title, company and location from an alert email. You cannot see\nthe job description. Judge conservatively: mark \"skip\" only when the TITLE ALONE makes\nthe job clearly wrong. When in doubt mark \"keep\" - a later step reads the full description.\n\nCandidate:\n- Student, M.Sc. Industrial AI from October 2026. Wants Werkstudent / Praktikum / part-time.\n- Full-time is fine if remote or hybrid. That is never visible in a title, so never skip on it.\n- Evidence: Python, automation, web scraping, REST APIs, dashboards, SQL, Android (Java/Kotlin),\n  C#/.NET, and an LLM pipeline with tests and CI.\n- Weak: mathematics, embedded C/C++, React/TypeScript, ML research.\n- German A2, English fluent.\n\nMark \"skip\" only for titles clearly outside software, data, AI or automation - for example\nmarketing, sales, HR, finance, law, mechanical or electrical engineering, construction,\nlogistics, nursing, or graphic design.\n\nGive each job one lane: python, data, ai, automation, dotnet, android, other.\n\nReturn ONLY a JSON array. No prose, no markdown fence:\n[{\"jobId\":\"<id>\",\"lane\":\"<lane>\",\"verdict\":\"keep\",\"reason\":\"<max 8 words>\"}]`;\n\nconst listing = items\n  .map(i => `${i.json.jobId} | ${i.json.title} | ${i.json.company} | ${i.json.location}`)\n  .join('\\n');\n\nconst geminiBody = {\n  contents: [{ parts: [{ text: `${instructions}\\n\\nJobs:\\n${listing}` }] }],\n  generationConfig: {\n    temperature: 0,                    // triage should be repeatable, not creative\n    responseMimeType: 'application/json',\n  },\n};\n\nreturn [{ json: { geminiBody, jobCount: items.length } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        224
+      ],
+      "id": "80b8a858-7e42-40a2-a40d-a841db2aaea0",
+      "name": "Build Relevance Prompt"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.geminiBody) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        528,
+        224
+      ],
+      "id": "4139a9ce-f408-47cf-8192-a59d004cbda5",
+      "name": "Gemini Relevance Check",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "IlxBmXYZZ2haRmJL",
+          "name": "Header Auth account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge Gemini's triage back onto the job rows.\n// The originals come from the dedupe node, not from Gemini, so a bad or missing\n// AI response can never drop a job.\nconst originals = $('Remove Duplicates').all();\n\nlet verdicts = [];\ntry {\n  const raw = $input.first().json?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';\n  const cleaned = raw.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();\n  const start = cleaned.indexOf('[');\n  const end = cleaned.lastIndexOf(']');\n  if (start !== -1 && end > start) {\n    verdicts = JSON.parse(cleaned.slice(start, end + 1));\n  }\n} catch (e) {\n  verdicts = [];        // quota hit, timeout, junk reply: fall through\n}\n\nconst byId = new Map(verdicts.map(v => [String(v.jobId), v]));\nconst aiWorked = verdicts.length > 0;\n\nreturn originals.map(o => {\n  const v = byId.get(String(o.json.jobId));\n  return {\n    json: {\n      ...o.json,\n      lane: v?.lane ?? '',\n      // Default to keep. Losing a real job to an AI failure is far worse\n      // than carrying a few extra rows in the sheet.\n      aiVerdict: v?.verdict ?? 'keep',\n      aiReason: v?.reason ?? (aiWorked ? 'not returned by model' : 'ai unavailable'),\n    },\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        736,
+        224
+      ],
+      "id": "b404d0b4-3865-4436-a3fd-6c795d611596",
+      "name": "Merge Relevance"
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Build Relevance Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Relevance Prompt": {
+      "main": [
+        [
+          {
+            "node": "Gemini Relevance Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Relevance Check": {
+      "main": [
+        [
+          {
+            "node": "Merge Relevance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Relevance": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b36db5e3-210b-4f56-9faa-9c8dd6240db4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": ""
+  },
+  "nodeGroups": [],
+  "id": "MQujkEisUAq31uzR",
+  "tags": []
+}

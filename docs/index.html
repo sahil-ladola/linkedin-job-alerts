@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LinkedIn Job Alerts - LinkedIn Job Alerts</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.6;
+         max-width: 42rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+  h1 { font-size: 1.7rem; line-height: 1.25; margin: 0 0 .25rem; }
+  h2 { font-size: 1.15rem; margin: 2rem 0 .4rem; }
+  .sub { opacity: .7; margin: 0 0 1.5rem; }
+  nav { margin: 0 0 2rem; font-size: .95rem; }
+  nav a { margin-right: 1rem; }
+  footer { margin-top: 3rem; font-size: .85rem; opacity: .7; }
+</style>
+</head>
+<body>
+<nav><a href="index.html">Home</a><a href="privacy.html">Privacy policy</a><a href="terms.html">Terms of service</a></nav>
+<h1>LinkedIn Job Alerts</h1>
+<p class="sub">A personal, self-hosted n8n workflow.</p>
+
+<p>LinkedIn Job Alerts is a small automation I built for my own job search. It runs on my own
+computer in a self-hosted <a href="https://n8n.io">n8n</a> instance and has one user: me.</p>
+<h2>What it does</h2>
+<ul>
+<li>Once an hour it reads the job-alert emails LinkedIn sends to my own Gmail inbox.</li>
+<li>It splits each email into one row per job: job id, title, company, location and a link.</li>
+<li>It removes jobs it has already seen and writes the new ones to my own Google Sheet.</li>
+<li>It sends the title, company and location of each new job to the Google Gemini API to sort it
+into a rough category.</li>
+</ul>
+<h2>Why it asks for Google access</h2>
+<p>The workflow signs in with Google so that it can read those alert emails in my Gmail account and
+write rows to my Google Sheet. It is not offered to other people as a service.</p>
+<h2>More</h2>
+<ul>
+<li><a href="privacy.html">Privacy policy</a></li>
+<li><a href="terms.html">Terms of service</a></li>
+<li><a href="https://github.com/sahil-ladola/linkedin-job-alerts">Source code and documentation on GitHub</a></li>
+</ul>
+
+<footer>LinkedIn Job Alerts is a personal project by Sahil Ladola. Source code:
+<a href="https://github.com/sahil-ladola/linkedin-job-alerts">github.com/sahil-ladola/linkedin-job-alerts</a>.
+Not affiliated with LinkedIn or Google.</footer>
+</body>
+</html>

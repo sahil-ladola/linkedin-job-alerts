@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy policy - LinkedIn Job Alerts</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.6;
+         max-width: 42rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+  h1 { font-size: 1.7rem; line-height: 1.25; margin: 0 0 .25rem; }
+  h2 { font-size: 1.15rem; margin: 2rem 0 .4rem; }
+  .sub { opacity: .7; margin: 0 0 1.5rem; }
+  nav { margin: 0 0 2rem; font-size: .95rem; }
+  nav a { margin-right: 1rem; }
+  footer { margin-top: 3rem; font-size: .85rem; opacity: .7; }
+</style>
+</head>
+<body>
+<nav><a href="index.html">Home</a><a href="privacy.html">Privacy policy</a><a href="terms.html">Terms of service</a></nav>
+<h1>Privacy policy</h1>
+<p class="sub">Last updated: 6 October 2026</p>
+
+<p>LinkedIn Job Alerts is a personal tool with a single user, its developer. This page describes
+what it does with data from the Google account it is connected to.</p>
+<h2>What data it accesses</h2>
+<ul>
+<li><strong>Gmail:</strong> it reads emails sent by <code>jobalerts-noreply@linkedin.com</code> in the
+connected Gmail account. It does not send, delete or change emails.</li>
+<li><strong>Google Sheets:</strong> it adds and updates rows in one Google Sheet owned by the same
+account.</li>
+</ul>
+<h2>How the data is used</h2>
+<p>From each alert email the workflow extracts the job id, title, company, location and link of every
+job listed, and writes them to the Google Sheet. Nothing else from the mailbox is used.</p>
+<h2>Where the data is stored</h2>
+<p>The workflow runs in a self-hosted n8n instance on the developer's own computer. The extracted
+job rows are stored in the developer's own Google Sheet. The sign-in tokens are stored in n8n's
+encrypted credential store on that computer.</p>
+<h2>Who the data is shared with</h2>
+<p>The title, company and location of each job are sent to the Google Gemini API so that the job can
+be sorted into a category. No other data is sent to any third party. Data is not sold, not used for
+advertising and not shared with anyone else.</p>
+<p>The use of information received from Google APIs follows the
+<a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User
+Data Policy</a>, including its Limited Use requirements.</p>
+<h2>Keeping and deleting data</h2>
+<p>Rows stay in the Google Sheet until the developer deletes them. Access can be withdrawn at any
+time at <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>,
+which stops the workflow from reading Gmail or writing to Sheets.</p>
+<h2>Contact</h2>
+<p>Questions about this policy can be raised as an issue on the
+<a href="https://github.com/sahil-ladola/linkedin-job-alerts/issues">project's GitHub page</a>.</p>
+
+<footer>LinkedIn Job Alerts is a personal project by Sahil Ladola. Source code:
+<a href="https://github.com/sahil-ladola/linkedin-job-alerts">github.com/sahil-ladola/linkedin-job-alerts</a>.
+Not affiliated with LinkedIn or Google.</footer>
+</body>
+</html>
